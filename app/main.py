@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+import os
 from fastapi import FastAPI
 from app.core.config import settings
 from app.routes.router import apiV1Router

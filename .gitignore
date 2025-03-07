@@ -1,6 +1,8 @@
 venv
 build
 
+**.env*
+
 dist
 **/*.pyc
 **/__pycache**
