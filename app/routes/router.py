@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.routes.api.v1.llm.post import LLMRouter
+from app.routes.api.v1.chat.post import LLMRouter
 
 apiV1Router = APIRouter(prefix="/api/v1")
 

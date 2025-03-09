@@ -18,8 +18,8 @@ class QueryRequestDto(BaseModel):
     session_id: Optional[str] = None
     
 
-@LLMRouter.post("/query")
-async def query(request: QueryRequestDto):
+@LLMRouter.post("/chat")
+async def chat_controller(request: QueryRequestDto):
     # Generate session ID if not provided
     session_id = request.session_id or str(uuid.uuid4())
     
