@@ -11,3 +11,6 @@ test:
 
 build:
 	docker build -t farmdoc .
+
+run:
+	docker run --env-file .env -p 8000:8000 farmdoc
