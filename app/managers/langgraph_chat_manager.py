@@ -7,7 +7,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-class StreamingLLMQuery:
+class LangGraphChatManager:
     def __init__(
         self,
         model_name: str = "gpt-3.5-turbo",

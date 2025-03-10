@@ -73,6 +73,16 @@
             cursor: pointer;
             font-size: 16px;
         }
+        #newchat-button {
+            margin-left: 10px;
+            padding: 0 20px;
+            background-color: #6a91d8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
         #send-button:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
@@ -118,6 +128,7 @@
     </div>
     <div id="input-container">
         <input type="text" id="message-input" placeholder="Type your message..." autofocus>
+        <button id="newchat-button">New Chat</button>
         <button id="send-button">Send</button>
     </div>
 
@@ -126,6 +137,7 @@
             const chatContainer = document.getElementById('chat-container');
             const messageInput = document.getElementById('message-input');
             const sendButton = document.getElementById('send-button');
+            const newChatButton = document.getElementById('newchat-button');
             const statusText = document.getElementById('status-text');
             
             let isProcessing = false;
@@ -140,6 +152,14 @@
                 chatContainer.appendChild(messageElement);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
                 return messageElement;
+            }
+
+            function clearMessages() {
+                console.log('children', chatContainer.children);
+                for (let child of chatContainer.children) {
+                    console.log('child', child)
+                    chatContainer.removeChild(child)
+                }
             }
             
             function appendToChat(text) {
@@ -183,6 +203,11 @@
                     messageInput.focus();
                 }
             }
+
+            function newChat() {
+                clearMessages();
+                localStorage.removeItem('session_id')
+            }
             
             function sendMessage() {
                 const message = messageInput.value.trim();
@@ -207,9 +232,11 @@
                         context: "", // You can customize this if needed
                         session_id: localStorage.getItem('session_id') || null // Optional session tracking
                     };
+
+                    console.log('session_id', localStorage.getItem('session_id'));
                     
                     // First send the POST request
-                    fetch('/api/v1/chat', {
+                    fetch('/api/v1/chat/openai', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -218,6 +245,11 @@
                     }).then(response => {
                         if (response.ok) {
                             updateStatus('Processing...');
+
+                            const sessionId = response.headers.get('X-Session-ID');
+                            if (sessionId) {
+                                localStorage.setItem('session_id', sessionId);
+                            }
                             
                             // Set up event source to receive the streaming response
                             const reader = response.body.getReader();
@@ -244,7 +276,7 @@
                                             try {
                                                 // Extract the plaintext data after "data: "
                                                 const plaintext = message.substring(6);
-                                                console.log('rx: ', plaintext);
+                                                // console.log('rx: ', plaintext);
                                                 
                                                 // Check if it's a special control message (still in JSON format)
                                                 if (plaintext.trim().startsWith('{') && plaintext.trim().endsWith('}')) {
@@ -293,22 +325,12 @@
                         showError('Error sending message: ' + error.message);
                         toggleInputState(true);
                     });
-                    fetch('/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ message: message }),
-                    }).catch(error => {
-                        console.error('Error:', error);
-                        updateStatus('Error sending message. Please try again.');
-                        toggleInputState(true);
-                    });
                 }
             }
             
             // Event listeners
             sendButton.addEventListener('click', sendMessage);
+            newChatButton.addEventListener('click', newChat);
             
             messageInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {

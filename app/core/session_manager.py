@@ -4,9 +4,10 @@ from pydantic import BaseModel
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 import json
 
+ # This session cache stores serialized messages and other metadata between API calls
 class ChatSession(BaseModel):
     session_id: str
-    messages: List[Dict]  # Will store serialized messages
+    messages: List[Dict] 
     last_accessed: datetime
     metadata: Dict = {}
 
@@ -18,7 +19,6 @@ class SessionManager:
     def get_session(self, session_id: str) -> Optional[ChatSession]:
         session = self.sessions.get(session_id)
         if session:
-            # Update last accessed time
             session.last_accessed = datetime.now()
             return session
         return None
@@ -33,24 +33,28 @@ class SessionManager:
         return session
 
     def add_message(self, session_id: str, message: BaseMessage):
+        # print("session", session_id, "adding message: ", message)
         session = self.get_session(session_id)
         if not session:
             session = self.create_session(session_id)
-        
-        # Convert message to dict for storage
         message_dict = {
             "type": message.__class__.__name__,
             "content": message.content,
             "timestamp": datetime.now().isoformat()
         }
+
+        # print('appending to messages: ', session.messages)
         session.messages.append(message_dict)
+
+        # print('session messages:')
+        # for message in session.messages:
+            # print('message: ', message)
 
     def get_messages(self, session_id: str) -> List[BaseMessage]:
         session = self.get_session(session_id)
         if not session:
+            print('no session found')
             return []
-        
-        # Convert stored dicts back to BaseMessage objects
         messages = []
         for msg in session.messages:
             if msg["type"] == "HumanMessage":

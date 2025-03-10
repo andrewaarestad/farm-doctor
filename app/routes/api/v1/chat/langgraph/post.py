@@ -1,4 +1,4 @@
-from app.managers.streaming_llm_query import StreamingLLMQuery
+from app.managers.langgraph_chat_manager import LangGraphChatManager
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -8,9 +8,9 @@ from app.core.session_manager import SessionManager
 from langchain_core.messages import HumanMessage, AIMessage
 
 
-LLMRouter = APIRouter()
-session_manager = SessionManager()
-llm_query = StreamingLLMQuery()
+langgraph_router = APIRouter()
+langgraph_session_manager = SessionManager()
+chat_manager = LangGraphChatManager()
 
 class QueryRequestDto(BaseModel):
     question: str
@@ -18,24 +18,18 @@ class QueryRequestDto(BaseModel):
     session_id: Optional[str] = None
     
 
-@LLMRouter.post("/chat")
+@langgraph_router.post("/chat/langgraph")
 async def chat_controller(request: QueryRequestDto):
-    # Generate session ID if not provided
     session_id = request.session_id or str(uuid.uuid4())
-    
-    # Get existing chat history or create new session
-    chat_history = session_manager.get_messages(session_id)
-    
-    # Add the new user message to history
-    session_manager.add_message(
+    chat_history = langgraph_session_manager.get_messages(session_id)
+    langgraph_session_manager.add_message(
         session_id,
         HumanMessage(content=request.question)
     )
 
-    # Create streaming response
     async def response_generator():
         response_content = []
-        async for chunk in llm_query.aquery(
+        async for chunk in chat_manager.aquery(
             question=request.question,
             context=request.context,
             chat_history=chat_history
@@ -43,9 +37,9 @@ async def chat_controller(request: QueryRequestDto):
             response_content.append(chunk)
             yield f"data: {chunk}\n\n"
         
-        # After completion, add AI response to history
+        # Save response to session cache
         full_response = "".join(response_content)
-        session_manager.add_message(
+        langgraph_session_manager.add_message(
             session_id,
             AIMessage(content=full_response)
         )
@@ -58,20 +52,20 @@ async def chat_controller(request: QueryRequestDto):
         }
     )
 
-# @app.get("/chat_history/{session_id}")
-# async def get_chat_history(session_id: str):
-#     messages = session_manager.get_messages(session_id)
-#     return {
-#         "session_id": session_id,
-#         "messages": [
-#             {"role": "user" if isinstance(m, HumanMessage) else "assistant",
-#              "content": m.content}
-#             for m in messages
-#         ]
-#     }
+@langgraph_router.get("/chat_history/{session_id}")
+async def get_chat_history(session_id: str):
+    messages = langgraph_session_manager.get_messages(session_id)
+    return {
+        "session_id": session_id,
+        "messages": [
+            {"role": "user" if isinstance(m, HumanMessage) else "assistant",
+             "content": m.content}
+            for m in messages
+        ]
+    }
 
 # # Periodically clean up expired sessions
-# @app.on_event("startup")
-# @app.on_event("shutdown")
+@langgraph_router.on_event("startup")
+@langgraph_router.on_event("shutdown")
 async def cleanup_sessions():
-    session_manager.cleanup_expired_sessions()
+    langgraph_session_manager.cleanup_expired_sessions()
